@@ -1,10 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { BuddyDisplay } from '@/components/BuddyDisplay';
-import { CareActions } from '@/components/CareActions';
-import { StatsPanel } from '@/components/StatsPanel';
-import { DailyStreaks } from '@/components/DailyStreaks';
-import { AdventurePanel } from '@/components/AdventurePanel';
+import { AppNavigation } from '@/components/AppNavigation';
 import { MotivationCard } from '@/components/MotivationCard';
 import { useBuddyStore } from '@/hooks/useBuddyStore';
 import { MobileNav } from '@/components/ui/mobile-nav';
@@ -19,13 +15,16 @@ export default function BuddyHome() {
     petBuddy,
     startAdventure,
     completeAdventure,
-    updateDailyStreak
+    updateDailyStreak,
+    changeBuddyName,
+    changeBuddyType,
+    changeBuddyClothing
   } = useBuddyStore();
 
   const [showMotivation, setShowMotivation] = useState(false);
 
   useEffect(() => {
-    // Show daily motivation randomly
+    // Zeige täglich Motivation
     if (Math.random() > 0.7) {
       setShowMotivation(true);
     }
@@ -33,11 +32,11 @@ export default function BuddyHome() {
 
   const motivationalMessages = [
     "Du schaffst das! 🌟",
-    "Heute ist ein wundervoller Tag für neue Abenteuer! ✨",
+    "Heute wird ein toller Tag! ✨",
     "Dein Buddy glaubt an dich! 💖",
-    "Kleine Schritte führen zu großen Erfolgen! 🌱",
-    "Du bist stärker als du denkst! 💪",
-    "Vergiss nicht, auch auf dich selbst aufzupassen! 🌸"
+    "Kleine Schritte, große Erfolge! 🌱",
+    "Du bist stark! 💪",
+    "Vergiss nicht auf dich aufzupassen! 🌸"
   ];
 
   return (
@@ -51,7 +50,7 @@ export default function BuddyHome() {
             Mein Buddy 🌟
           </h1>
           <p className="text-purple-600">
-            Kümmere dich um deinen süßen Begleiter!
+            {buddy.stage === 'egg' ? 'Streichle dein Ei zum Schlüpfen!' : `Kümmere dich um ${buddy.name}!`}
           </p>
         </div>
 
@@ -63,31 +62,16 @@ export default function BuddyHome() {
           />
         )}
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Buddy Display */}
-          <div className="lg:col-span-2">
-            <BuddyDisplay buddy={buddy} />
-            <CareActions
-              onFeed={() => feedBuddy()}
-              onPlay={() => playWithBuddy()}
-              onPet={() => petBuddy()}
-              buddy={buddy}
-            />
-          </div>
-
-          {/* Right Column - Stats and Features */}
-          <div className="space-y-6">
-            <StatsPanel buddy={buddy} />
-            <DailyStreaks streaks={streaks} onUpdateStreak={updateDailyStreak} />
-            <AdventurePanel
-              buddy={buddy}
-              currentAdventure={currentAdventure}
-              onStartAdventure={startAdventure}
-              onCompleteAdventure={completeAdventure}
-            />
-          </div>
-        </div>
+        {/* Tab Navigation */}
+        <AppNavigation
+          buddy={buddy}
+          onFeed={feedBuddy}
+          onPlay={playWithBuddy}
+          onPet={petBuddy}
+          onNameChange={changeBuddyName}
+          onBuddyTypeChange={changeBuddyType}
+          onClothingChange={changeBuddyClothing}
+        />
       </div>
     </div>
   );

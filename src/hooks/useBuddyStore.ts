@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 interface Buddy {
@@ -14,6 +13,12 @@ interface Buddy {
   lastPlayed: Date;
   lastPetted: Date;
   createdAt: Date;
+  buddyType: string;
+  clothing: string;
+  feedCount: number;
+  playCount: number;
+  petCount: number;
+  eggPetCount: number;
 }
 
 interface Streaks {
@@ -43,7 +48,13 @@ export function useBuddyStore() {
         lastFed: new Date(parsed.lastFed),
         lastPlayed: new Date(parsed.lastPlayed),
         lastPetted: new Date(parsed.lastPetted),
-        createdAt: new Date(parsed.createdAt)
+        createdAt: new Date(parsed.createdAt),
+        buddyType: parsed.buddyType || 'default',
+        clothing: parsed.clothing || 'none',
+        feedCount: parsed.feedCount || 0,
+        playCount: parsed.playCount || 0,
+        petCount: parsed.petCount || 0,
+        eggPetCount: parsed.eggPetCount || 0,
       };
     }
     
@@ -56,10 +67,16 @@ export function useBuddyStore() {
       health: 100,
       stage: 'egg' as const,
       color: Math.floor(Math.random() * 360).toString(),
-      lastFed: new Date(Date.now() - 4000000), // 1+ hour ago
-      lastPlayed: new Date(Date.now() - 2000000), // 30+ minutes ago
-      lastPetted: new Date(Date.now() - 1000000), // 15+ minutes ago
-      createdAt: new Date()
+      lastFed: new Date(Date.now() - 4000000),
+      lastPlayed: new Date(Date.now() - 2000000),
+      lastPetted: new Date(Date.now() - 1000000),
+      createdAt: new Date(),
+      buddyType: 'default',
+      clothing: 'none',
+      feedCount: 0,
+      playCount: 0,
+      petCount: 0,
+      eggPetCount: 0,
     };
   });
 
@@ -76,7 +93,7 @@ export function useBuddyStore() {
     return {
       current: 0,
       longest: 0,
-      lastCheckin: new Date(Date.now() - 86400000), // 1 day ago
+      lastCheckin: new Date(Date.now() - 86400000),
       totalDays: 0
     };
   });
@@ -145,7 +162,8 @@ export function useBuddyStore() {
       ...prev,
       happiness: Math.min(100, prev.happiness + 15),
       health: Math.min(100, prev.health + 10),
-      lastFed: new Date()
+      lastFed: new Date(),
+      feedCount: prev.feedCount + 1
     }));
     gainExperience(20);
   };
@@ -155,18 +173,54 @@ export function useBuddyStore() {
       ...prev,
       happiness: Math.min(100, prev.happiness + 25),
       health: Math.min(100, prev.health + 5),
-      lastPlayed: new Date()
+      lastPlayed: new Date(),
+      playCount: prev.playCount + 1
     }));
     gainExperience(30);
   };
 
   const petBuddy = () => {
+    setBuddy(prev => {
+      const newPetCount = prev.petCount + 1;
+      const newEggPetCount = prev.eggPetCount + 1;
+      
+      // Ei schlüpft nach 3 Streicheleinheiten
+      let newStage = prev.stage;
+      if (prev.stage === 'egg' && newEggPetCount >= 3) {
+        newStage = 'baby';
+      }
+      
+      return {
+        ...prev,
+        happiness: Math.min(100, prev.happiness + 10),
+        lastPetted: new Date(),
+        petCount: newPetCount,
+        eggPetCount: newEggPetCount,
+        stage: newStage
+      };
+    });
+    gainExperience(15);
+  };
+
+  const changeBuddyName = (newName: string) => {
     setBuddy(prev => ({
       ...prev,
-      happiness: Math.min(100, prev.happiness + 10),
-      lastPetted: new Date()
+      name: newName
     }));
-    gainExperience(15);
+  };
+
+  const changeBuddyType = (newType: string) => {
+    setBuddy(prev => ({
+      ...prev,
+      buddyType: newType
+    }));
+  };
+
+  const changeBuddyClothing = (newClothing: string) => {
+    setBuddy(prev => ({
+      ...prev,
+      clothing: newClothing
+    }));
   };
 
   const updateDailyStreak = () => {
@@ -202,6 +256,63 @@ export function useBuddyStore() {
     }
     setCurrentAdventure(null);
   };
+
+  // Daily notification system
+  useEffect(() => {
+    const checkDailyNotification = () => {
+      const lastNotification = localStorage.getItem('last-buddy-notification');
+      const now = new Date();
+      const today = now.toDateString();
+      
+      if (lastNotification !== today) {
+        const messages = [
+          "Dein Buddy hat dich vermisst! 💕",
+          "Zeit für eine Spielrunde! 🎾",
+          "Dein Buddy braucht etwas Liebe! 🤗",
+          "Vergiss nicht zu füttern! 🍎",
+          "Dein Buddy wartet auf dich! ⭐",
+          "Zusammen seid ihr unschlagbar! 💪"
+        ];
+        
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(randomMessage, {
+            body: `${buddy.name} freut sich auf dich!`,
+            icon: '🐣'
+          });
+        }
+        
+        localStorage.setItem('last-buddy-notification', today);
+      }
+    };
+
+    // Prüfe täglich um 9:00 Uhr
+    const now = new Date();
+    const next9AM = new Date();
+    next9AM.setHours(9, 0, 0, 0);
+    
+    if (now.getHours() >= 9) {
+      next9AM.setDate(next9AM.getDate() + 1);
+    }
+    
+    const msUntil9AM = next9AM.getTime() - now.getTime();
+    
+    const timeout = setTimeout(() => {
+      checkDailyNotification();
+      // Dann alle 24 Stunden wiederholen
+      setInterval(checkDailyNotification, 24 * 60 * 60 * 1000);
+    }, msUntil9AM);
+
+    return () => clearTimeout(timeout);
+  }, [buddy.name]);
+
+  // Benachrichtigungserlaubnis anfordern
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Gradual stat decay (optional - makes it more realistic)
   useEffect(() => {
@@ -242,6 +353,9 @@ export function useBuddyStore() {
     petBuddy,
     updateDailyStreak,
     startAdventure,
-    completeAdventure
+    completeAdventure,
+    changeBuddyName,
+    changeBuddyType,
+    changeBuddyClothing
   };
 }
